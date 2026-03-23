@@ -1,30 +1,4 @@
-window.msgs = [
-  {
-    pseudo: "Alice",
-    msg: "Je suis persuadée que les IA ne remplaceront jamais les ingénieurs.",
-    date: "2026-03-05T09:15:32",
-  },
-  {
-    pseudo: "Bob",
-    msg: "Je ne suis pas d'accord, les avancées sont bien trop rapides.",
-    date: "2026-03-05T09:42:14",
-  },
-  {
-    pseudo: "Charlie",
-    msg: "Personnellement, je suis plus inquiet pour les analystes en finance que pour les ingénieurs.",
-    date: "2026-03-05T10:05:58",
-  },
-  {
-    pseudo: "David",
-    msg: "Moi j'attends seulement la mise en place du revenu universel et la fin du travail pour les humains.",
-    date: "2026-03-05T13:34:03",
-  },
-  {
-    pseudo: "Elise",
-    msg: "L'idée paraît séduisante, mais c'est la meilleure manière de créer une sous-classe permanente d'humains à la merci des IAs et des milliardaires.",
-    date: "2026-03-05T15:12:27",
-  },
-];
+window.msgs = [];
 
 const messagesList = document.querySelector("#messages");
 const form = document.querySelector("#post-form");
@@ -93,6 +67,41 @@ function sanitizeFieldValue(value) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+async function fetchMessages() {
+  const response = await fetch("/msg/getAll");
+
+  if (!response.ok) {
+    throw new Error("Impossible de récupérer les messages.");
+  }
+
+  const messages = await response.json();
+  window.msgs = messages;
+  return messages;
+}
+
+async function createMessage(payload) {
+  const messagePath = encodeURIComponent(payload.msg);
+  const pseudoParam = encodeURIComponent(payload.pseudo);
+  const dateParam = encodeURIComponent(new Date().toISOString());
+  const response = await fetch(`/msg/post/${messagePath}?pseudo=${pseudoParam}&date=${dateParam}`);
+
+  if (!response.ok) {
+    throw new Error("Impossible d'ajouter le message.");
+  }
+
+  const index = await response.json();
+
+  if (index === -1 || (typeof index === "object" && index.code === -1)) {
+    throw new Error("Impossible d'ajouter le message.");
+  }
+
+  return {
+    pseudo: payload.pseudo,
+    msg: payload.msg,
+    date: decodeURIComponent(dateParam),
+  };
+}
+
 function update(messages) {
   messagesList.innerHTML = "";
   emptyState.hidden = messages.length > 0;
@@ -120,7 +129,7 @@ function update(messages) {
   });
 }
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const pseudo = sanitizeFieldValue(pseudoInput.value);
   const content = messageInput.value.trim();
@@ -137,23 +146,32 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  window.msgs.push({
-    pseudo,
-    msg: content,
-    date: new Date().toISOString(),
-  });
+  try {
+    const newMessage = await createMessage({
+      pseudo,
+      msg: content,
+    });
 
-  update(window.msgs);
-  form.reset();
-  updateMessageCount();
-  setStatus(formStatus, "Message publié et ajouté au fil de discussion.");
-  setStatus(feedStatus, "La liste a été mise à jour avec le dernier message.");
-  pseudoInput.focus();
+    window.msgs.push(newMessage);
+    update(window.msgs);
+    form.reset();
+    updateMessageCount();
+    setStatus(formStatus, "Message publié et ajouté au fil de discussion.");
+    setStatus(feedStatus, "La liste a été mise à jour avec le dernier message.");
+    pseudoInput.focus();
+  } catch (error) {
+    setStatus(formStatus, error.message, "error");
+  }
 });
 
-refreshButton.addEventListener("click", () => {
-  update(window.msgs);
-  setStatus(feedStatus, "Liste actualisée à partir de la variable window.msgs.");
+refreshButton.addEventListener("click", async () => {
+  try {
+    const messages = await fetchMessages();
+    update(messages);
+    setStatus(feedStatus, "Liste actualisée depuis le serveur.");
+  } catch (error) {
+    setStatus(feedStatus, error.message, "error");
+  }
 });
 
 themeButton.addEventListener("click", () => {
@@ -166,5 +184,14 @@ themeButton.addEventListener("click", () => {
 window.update = update;
 messageInput.addEventListener("input", updateMessageCount);
 
-update(window.msgs);
 updateMessageCount();
+
+fetchMessages()
+  .then((messages) => {
+    update(messages);
+    setStatus(feedStatus, "Messages chargés depuis le serveur.");
+  })
+  .catch((error) => {
+    update(window.msgs);
+    setStatus(feedStatus, error.message, "error", true);
+  });
