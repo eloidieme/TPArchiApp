@@ -32,6 +32,17 @@ const pseudoInput = document.querySelector("#pseudo");
 const messageInput = document.querySelector("#message");
 const refreshButton = document.querySelector("#refresh");
 const themeButton = document.querySelector("#toggle-theme");
+const messageSummary = document.querySelector("#message-summary");
+const emptyState = document.querySelector("#empty-state");
+const formStatus = document.querySelector("#form-status");
+const feedStatus = document.querySelector("#feed-status");
+const messageCount = document.querySelector("#message-count");
+
+const MAX_MESSAGE_LENGTH = 280;
+const STATUS_TIMEOUT = 2200;
+
+let formStatusTimer;
+let feedStatusTimer;
 
 function formatDate(dateString) {
   const date = new Date(dateString);
@@ -42,8 +53,50 @@ function formatDate(dateString) {
   });
 }
 
+function setStatus(element, message, tone = "success", persist = false) {
+  clearTimeout(element === formStatus ? formStatusTimer : feedStatusTimer);
+
+  if (!message) {
+    element.textContent = "";
+    element.className = "status-banner";
+    return;
+  }
+
+  element.textContent = message;
+  element.className = `status-banner is-visible ${tone === "error" ? "is-error" : "is-success"}`;
+
+  if (persist) {
+    return;
+  }
+
+  const timer = window.setTimeout(() => {
+    element.textContent = "";
+    element.className = "status-banner";
+  }, STATUS_TIMEOUT);
+
+  if (element === formStatus) {
+    formStatusTimer = timer;
+  } else {
+    feedStatusTimer = timer;
+  }
+}
+
+function updateMessageCount() {
+  messageCount.textContent = `${messageInput.value.length} / ${MAX_MESSAGE_LENGTH}`;
+}
+
+function updateSummary(count) {
+  messageSummary.textContent = `${count} message${count > 1 ? "s" : ""} affiché${count > 1 ? "s" : ""}`;
+}
+
+function sanitizeFieldValue(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
 function update(messages) {
   messagesList.innerHTML = "";
+  emptyState.hidden = messages.length > 0;
+  updateSummary(messages.length);
 
   messages.forEach((message, index) => {
     const item = document.createElement("li");
@@ -69,28 +122,49 @@ function update(messages) {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+  const pseudo = sanitizeFieldValue(pseudoInput.value);
+  const content = messageInput.value.trim();
+
+  if (!pseudo) {
+    pseudoInput.focus();
+    setStatus(formStatus, "Le pseudo est requis pour publier un message.", "error");
+    return;
+  }
+
+  if (!content) {
+    messageInput.focus();
+    setStatus(formStatus, "Le message ne peut pas être vide.", "error");
+    return;
+  }
 
   window.msgs.push({
-    pseudo: pseudoInput.value,
-    msg: messageInput.value,
+    pseudo,
+    msg: content,
     date: new Date().toISOString(),
   });
 
   update(window.msgs);
   form.reset();
+  updateMessageCount();
+  setStatus(formStatus, "Message publié et ajouté au fil de discussion.");
+  setStatus(feedStatus, "La liste a été mise à jour avec le dernier message.");
+  pseudoInput.focus();
 });
 
 refreshButton.addEventListener("click", () => {
   update(window.msgs);
+  setStatus(feedStatus, "Liste actualisée à partir de la variable window.msgs.");
 });
 
 themeButton.addEventListener("click", () => {
-  document.body.classList.toggle("light-theme");
-  themeButton.textContent = document.body.classList.contains("light-theme")
-    ? "Passer en mode sombre"
-    : "Passer en mode clair";
+  const isLight = document.body.classList.toggle("light-theme");
+  themeButton.setAttribute("aria-pressed", String(isLight));
+  themeButton.textContent = isLight ? "Passer en mode sombre" : "Passer en mode clair";
+  setStatus(feedStatus, isLight ? "Le thème clair est actif." : "Le thème sombre est actif.");
 });
 
 window.update = update;
+messageInput.addEventListener("input", updateMessageCount);
 
 update(window.msgs);
+updateMessageCount();
