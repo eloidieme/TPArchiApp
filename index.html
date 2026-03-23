@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Le Forum</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet" type="text/css">
+  </head>
+  <body>
+    <main>
+      <header class="page-header">
+        <div class="page-intro">
+          <p class="eyebrow">Espace de discussion</p>
+          <h1>Forum sur l'avenir du travail</h1>
+          <p class="lede">
+            Une démonstration sobre et lisible d'un mini forum client, pensée pour rendre le contenu,
+            les commandes et le formulaire immédiatement évaluables.
+          </p>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="toggle-theme">Passer en mode clair</button>
+        </div>
+      </header>
+
+      <div class="content-grid">
+        <section class="panel panel-feed" aria-label="Messages du forum">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Messages</p>
+              <h2>Fil de discussion</h2>
+            </div>
+            <div class="actions">
+              <button type="button" id="refresh">Mettre à jour les messages</button>
+            </div>
+          </div>
+          <ul id="messages"></ul>
+        </section>
+
+        <aside class="panel panel-compose">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Contribution</p>
+              <h2>Poster un message</h2>
+            </div>
+          </div>
+
+          <form id="post-form">
+            <label for="pseudo">Pseudo</label>
+            <input id="pseudo" name="pseudo" type="text" required>
+
+            <label for="message">Poster un nouveau message</label>
+            <textarea id="message" name="message" required></textarea>
+
+            <button type="submit" id="post">Poster</button>
+          </form>
+        </aside>
+      </div>
+    </main>
+    
+  <script src="script.js"></script>
+  </body>
+</html>
